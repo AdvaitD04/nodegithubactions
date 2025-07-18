@@ -1,11 +1,12 @@
-name: Node.js CI
+name: Node.js CI/CD
 
-on: [push] # This workflow runs on every push to any branch
+on: [push]
 
 jobs:
-  build:
+  # Job 1: Run the linter first
+  lint:
+    name: Lint Code
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
@@ -14,9 +15,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # Job 2: Run tests only after linting succeeds
+  test:
+    name: Run Tests
+    needs: lint # This job depends on the 'lint' job
+    runs-on: ubuntu-latest
+    
+    strategy:
+      # Run a separate job for each version of Node.js
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run tests
         run: npm test
